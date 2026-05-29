@@ -1,0 +1,16 @@
+profiles:
+  mysql-dev:
+    type: mysql
+    host: 127.0.0.1
+    port: 3306
+    database: test
+    username: admin
+    password: 123
+
+  pgsql-dev:
+    type: postgresql
+    host: 127.0.0.1
+    port: 5431
+    database: test
+    username: admin
+    password: 123

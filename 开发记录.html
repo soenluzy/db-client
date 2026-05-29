@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Client CLI 开发记录</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: "Fira Code", "Consolas", monospace;
+            font-size: 0.9em;
+        }
+        .code-block code {
+            white-space: pre;
+        }
+        .file-tree {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-family: "Fira Code", "Consolas", monospace;
+            font-size: 0.85em;
+            margin: 15px 0;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .feature-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .feature-item .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #667eea;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border-radius: 50%;
+        }
+        .timeline-item h3 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .tech-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .download-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            border-radius: 12px;
+        }
+        .download-section a {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.6em; }
+            .section { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Database Client CLI</h1>
+            <p>一个支持 MySQL 和 PostgreSQL 的交互式数据库命令行工具</p>
+        </header>
+
+        <div class="section">
+            <h2>项目背景</h2>
+            <p>由于网络限制，无法直接使用工具连接数据库，希望在 Linux 主机上部署一个 Java 程序来连接数据库执行 SQL 查询和数据导出。</p>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="icon">🐬</div>
+                    <div>MySQL 支持</div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">🐘</div>
+                    <div>PostgreSQL 支持</div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">💻</div>
+                    <div>交互式 REPL</div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">📊</div>
+                    <div>数据导出</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>需求调研</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h3>用户交互方式</h3>
+                    <p>选择 CLI 命令行交互，启动后进入 REPL，类似 psql 体验</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>数据展示</h3>
+                    <p>终端表格展示 + 导出功能（CSV + Excel）</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>配置管理</h3>
+                    <p>使用 YAML 配置文件管理数据库连接信息</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>支持数据库</h3>
+                    <p>两个数据库：MySQL 和 PostgreSQL</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>认证方式</h3>
+                    <p>用户名密码认证</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>错误处理</h3>
+                    <p>显示详细错误信息（完整异常堆栈）</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>技术选型</h2>
+            <div class="tech-stack">
+                <span class="tech-tag">Java 1.8+</span>
+                <span class="tech-tag">Maven</span>
+                <span class="tech-tag">MySQL Connector/J 8.0.33</span>
+                <span class="tech-tag">PostgreSQL JDBC 42.7.1</span>
+                <span class="tech-tag">JLine 3.25.1</span>
+                <span class="tech-tag">Apache POI 5.2.5</span>
+                <span class="tech-tag">Apache Commons CSV 1.10.0</span>
+                <span class="tech-tag">SnakeYAML 2.2</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>项目结构</h2>
+            <div class="file-tree">
+db-client/
+├── pom.xml
+└── src/main/java/com/example/dbclient/
+    ├── Main.java                    # 程序入口
+    ├── cli/
+    │   ├── Repl.java                # REPL 主循环
+    │   └── CommandHandler.java      # 命令处理
+    ├── config/
+    │   ├── ConfigLoader.java        # 配置加载
+    │   └── DatabaseProfile.java     # 配置模型
+    ├── db/
+    │   ├── DatabaseType.java        # 数据库类型枚举
+    │   ├── DatabaseManager.java     # 数据库连接管理
+    │   └── QueryResult.java         # 查询结果封装
+    ├── export/
+    │   ├── Exporter.java            # 导出接口
+    │   ├── CsvExporter.java         # CSV 导出
+    │   ├── ExcelExporter.java       # Excel 导出
+    │   └── ExporterFactory.java     # 导出工厂
+    └── formatter/
+        └── TableFormatter.java      # 表格格式化
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>配置文件示例</h2>
+            <div class="code-block">
+<code>profiles:
+  mysql-dev:
+    type: mysql
+    host: 192.168.1.100
+    port: 3306
+    database: myapp_dev
+    username: dev_user
+    password: xxx
+
+  pgsql-dev:
+    type: postgresql
+    host: 192.168.1.100
+    port: 5432
+    database: myapp_dev
+    username: dev_user
+    password: xxx</code>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>使用示例</h2>
+            <div class="code-block">
+<code>$ db-client --profile mysql-dev
+
+Database Client REPL
+Type \help for available commands
+
+[MYSQL] myapp_dev> SELECT * FROM users LIMIT 10;
++----+-------+------------------+
+| id | name  | email            |
++----+-------+------------------+
+| 1  | Alice | alice@example.com|
+| 2  | Bob   | bob@example.com  |
++----+-------+------------------+
+(2 rows in 0.023s)
+
+[MYSQL] myapp_dev> \export /tmp/users.csv
+✓ Exported to /tmp/users.csv
+
+[MYSQL] myapp_dev> \help
+Available commands:
+  \exit, \quit    Exit the REPL
+  \export <path>  Export last result to CSV/XLSX
+  \help           Show this help
+  \connect <profile>  Switch database connection
+
+[MYSQL] myapp_dev> \exit
+Goodbye!</code>
+            </div>
+            <div class="note">
+                <strong>注意：</strong>命令行输入时，反斜杠可能需要双写（如 <code>\\export</code>），具体取决于终端环境。
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>REPL 命令</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>命令</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>SELECT ...</code></td>
+                        <td>执行 SQL 查询</td>
+                    </tr>
+                    <tr>
+                        <td><code>\export &lt;path&gt;</code></td>
+                        <td>导出上次查询结果到 CSV/XLSX</td>
+                    </tr>
+                    <tr>
+                        <td><code>\connect &lt;profile&gt;</code></td>
+                        <td>切换数据库连接</td>
+                    </tr>
+                    <tr>
+                        <td><code>\help</code></td>
+                        <td>显示帮助信息</td>
+                    </tr>
+                    <tr>
+                        <td><code>\exit</code>, <code>\quit</code></td>
+                        <td>退出 REPL</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>大数据优化</h2>
+            <p>针对大数据量场景，进行了以下优化：</p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>流式查询</strong>：使用 JDBC forward-only 游标，减少内存占用</li>
+                <li><strong>流式导出</strong>：Excel 使用 SXSSFWorkbook，CSV 使用批量写入</li>
+                <li><strong>进度显示</strong>：导出大数据集时显示进度百分比</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>实现成果</h2>
+            <ul style="margin-left: 20px;">
+                <li>9 个任务全部完成</li>
+                <li>13 个 Java 源文件</li>
+                <li>864 行代码</li>
+                <li>生成可执行 JAR (26 MB)</li>
+                <li>完整的 README 文档</li>
+            </ul>
+        </div>
+
+        <div class="download-section">
+            <h2>项目已就绪</h2>
+            <p style="margin-top: 10px;">JAR 文件位于: db-client/target/db-client-1.0.0.jar</p>
+            <a href="db-client/README.md">查看完整 README</a>
+        </div>
+
+        <footer>
+            <p>Generated by Claude Code</p>
+        </footer>
+    </div>
+</body>
+</html>
