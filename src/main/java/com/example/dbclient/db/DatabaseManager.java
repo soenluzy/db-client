@@ -38,8 +38,14 @@ public class DatabaseManager implements AutoCloseable {
         if (isSelectStatement(sql)) {
             // Use forward-only, read-only cursor for efficiency
             Statement stmt = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-            // Enable streaming for large result sets
-            stmt.setFetchSize(Integer.MIN_VALUE);
+            // Use a reasonable fetch size; Integer.MIN_VALUE enables streaming in some PostgreSQL versions
+            // but causes errors in others. Using 1000 as a safe default for most use cases.
+            try {
+                stmt.setFetchSize(1000);
+            } catch (SQLException e) {
+                // Fallback: try with default fetch size
+                stmt.setFetchSize(100);
+            }
 
             try (ResultSet rs = stmt.executeQuery(sql)) {
                 List<String> columns = extractColumns(rs);
