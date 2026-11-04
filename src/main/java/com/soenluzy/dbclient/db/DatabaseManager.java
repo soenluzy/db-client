@@ -1,7 +1,7 @@
-package com.example.dbclient.db;
+package com.soenluzy.dbclient.db;
 
-import com.example.dbclient.config.DatabaseProfile;
-import com.example.dbclient.export.Exporter;
+import com.soenluzy.dbclient.config.DatabaseProfile;
+import com.soenluzy.dbclient.export.Exporter;
 
 import java.sql.*;
 import java.util.ArrayList;

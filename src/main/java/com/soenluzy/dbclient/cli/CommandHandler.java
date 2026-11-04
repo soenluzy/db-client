@@ -1,12 +1,12 @@
-package com.example.dbclient.cli;
+package com.soenluzy.dbclient.cli;
 
-import com.example.dbclient.config.DatabaseProfile;
-import com.example.dbclient.db.DatabaseManager;
-import com.example.dbclient.db.QueryResult;
-import com.example.dbclient.db.StreamingQueryResult;
-import com.example.dbclient.export.Exporter;
-import com.example.dbclient.export.ExporterFactory;
-import com.example.dbclient.formatter.TableFormatter;
+import com.soenluzy.dbclient.config.DatabaseProfile;
+import com.soenluzy.dbclient.db.DatabaseManager;
+import com.soenluzy.dbclient.db.QueryResult;
+import com.soenluzy.dbclient.db.StreamingQueryResult;
+import com.soenluzy.dbclient.export.Exporter;
+import com.soenluzy.dbclient.export.ExporterFactory;
+import com.soenluzy.dbclient.formatter.TableFormatter;
 
 import java.io.IOException;
 import java.nio.file.Path;

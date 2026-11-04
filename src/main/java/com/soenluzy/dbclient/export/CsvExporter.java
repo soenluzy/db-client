@@ -1,6 +1,6 @@
-package com.example.dbclient.export;
+package com.soenluzy.dbclient.export;
 
-import com.example.dbclient.db.QueryResult;
+import com.soenluzy.dbclient.db.QueryResult;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 

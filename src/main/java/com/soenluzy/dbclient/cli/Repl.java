@@ -1,7 +1,7 @@
-package com.example.dbclient.cli;
+package com.soenluzy.dbclient.cli;
 
-import com.example.dbclient.config.DatabaseProfile;
-import com.example.dbclient.db.DatabaseManager;
+import com.soenluzy.dbclient.config.DatabaseProfile;
+import com.soenluzy.dbclient.db.DatabaseManager;
 import org.jline.reader.*;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;

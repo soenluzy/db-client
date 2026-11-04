@@ -1,4 +1,4 @@
-package com.example.dbclient.db;
+package com.soenluzy.dbclient.db;
 
 public enum DatabaseType {
     MYSQL("mysql", "com.mysql.cj.jdbc.Driver"),

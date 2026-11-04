@@ -1,6 +1,6 @@
-package com.example.dbclient.export;
+package com.soenluzy.dbclient.export;
 
-import com.example.dbclient.db.QueryResult;
+import com.soenluzy.dbclient.db.QueryResult;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;

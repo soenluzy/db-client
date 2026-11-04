@@ -1,4 +1,6 @@
-package com.example.dbclient.export;
+package com.soenluzy.dbclient.export;
+
+import com.soenluzy.dbclient.db.QueryResult;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -13,7 +15,7 @@ public class ExporterFactory {
         return new CsvExporter();
     }
 
-    public static void exportToFile(Path path, com.example.dbclient.db.QueryResult result) throws IOException {
+    public static void exportToFile(Path path, QueryResult result) throws IOException {
         Exporter exporter = create(path);
         exporter.export(result, path);
     }

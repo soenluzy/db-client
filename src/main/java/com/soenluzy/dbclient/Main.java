@@ -1,8 +1,8 @@
-package com.example.dbclient;
+package com.soenluzy.dbclient;
 
-import com.example.dbclient.cli.Repl;
-import com.example.dbclient.config.DatabaseProfile;
-import com.example.dbclient.config.ConfigLoader;
+import com.soenluzy.dbclient.cli.Repl;
+import com.soenluzy.dbclient.config.DatabaseProfile;
+import com.soenluzy.dbclient.config.ConfigLoader;
 
 import java.util.Map;
 

@@ -1,6 +1,6 @@
-package com.example.dbclient.config;
+package com.soenluzy.dbclient.config;
 
-import com.example.dbclient.db.DatabaseType;
+import com.soenluzy.dbclient.db.DatabaseType;
 
 public class DatabaseProfile {
     private DatabaseType type;

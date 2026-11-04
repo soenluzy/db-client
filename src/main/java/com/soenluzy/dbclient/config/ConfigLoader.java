@@ -1,4 +1,4 @@
-package com.example.dbclient.config;
+package com.soenluzy.dbclient.config;
 
 import org.yaml.snakeyaml.Yaml;
 

@@ -1,6 +1,6 @@
-package com.example.dbclient.formatter;
+package com.soenluzy.dbclient.formatter;
 
-import com.example.dbclient.db.QueryResult;
+import com.soenluzy.dbclient.db.QueryResult;
 
 import java.util.List;
 

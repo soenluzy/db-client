@@ -1,4 +1,4 @@
-package com.example.dbclient.db;
+package com.soenluzy.dbclient.db;
 
 import java.util.ArrayList;
 import java.util.List;
