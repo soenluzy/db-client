@@ -3,6 +3,8 @@ package com.example.dbclient.cli;
 import com.example.dbclient.config.DatabaseProfile;
 import com.example.dbclient.db.DatabaseManager;
 import com.example.dbclient.db.QueryResult;
+import com.example.dbclient.db.StreamingQueryResult;
+import com.example.dbclient.export.Exporter;
 import com.example.dbclient.export.ExporterFactory;
 import com.example.dbclient.formatter.TableFormatter;
 
@@ -16,9 +18,11 @@ import java.util.regex.Pattern;
 
 public final class CommandHandler {
     private static final Pattern EXPORT_PATTERN = Pattern.compile("\\\\export\\s+(.+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EXPORT_SQL_PATTERN = Pattern.compile("\\\\export-sql\\s+(\\S+)\\s+(.+)");
 
     private final DatabaseManager dbManager;
     public final Map<String, DatabaseProfile> profiles;
+    private boolean quietMode = false;
 
     public CommandHandler(DatabaseManager dbManager, Map<String, DatabaseProfile> profiles) {
         this.dbManager = dbManager;
@@ -41,8 +45,17 @@ public final class CommandHandler {
             return handleExport(exportMatcher.group(1).trim());
         }
 
+        Matcher exportSqlMatcher = EXPORT_SQL_PATTERN.matcher(trimmed);
+        if (exportSqlMatcher.matches()) {
+            return handleExportSql(exportSqlMatcher.group(1).trim(), exportSqlMatcher.group(2).trim());
+        }
+
         if (trimmed.toLowerCase().startsWith("\\connect ")) {
             return handleConnect(trimmed.substring(9).trim());
+        }
+
+        if (trimmed.toLowerCase().startsWith("\\quiet ")) {
+            return handleQuiet(trimmed.substring(7).trim());
         }
 
         // Execute SQL
@@ -51,11 +64,13 @@ public final class CommandHandler {
 
     private String getHelpText() {
         return "Available commands:\n" +
-               "  SELECT ...     Execute SQL query\n" +
-               "  \\export <path>  Export last result to CSV/XLSX\n" +
-               "  \\connect <profile>  Switch database connection\n" +
-               "  \\help         Show this help\n" +
-               "  \\exit, \\quit  Exit the REPL";
+               "  SELECT ...             Execute SQL query\n" +
+               "  \\export <path>         Export last result to CSV/XLSX\n" +
+               "  \\export-sql <path> <sql>  Execute SQL and export directly (streaming, no display)\n" +
+               "  \\quiet on|off          Toggle quiet mode (show summary only)\n" +
+               "  \\connect <profile>     Switch database connection\n" +
+               "  \\help                  Show this help\n" +
+               "  \\exit, \\quit           Exit the REPL";
     }
 
     private String handleExport(String pathStr) {
@@ -70,6 +85,32 @@ public final class CommandHandler {
             return "Exported to " + pathStr;
         } catch (IOException e) {
             return "Export failed: " + e.getMessage();
+        }
+    }
+
+    private String handleExportSql(String pathStr, String sql) {
+        try {
+            Path path = Paths.get(pathStr);
+            Exporter exporter = ExporterFactory.create(path);
+            StreamingQueryResult result = dbManager.executeAndExport(sql, exporter, path);
+            return String.format("Exported %d rows to %s (%dms)",
+                    result.getRowCount(), pathStr, result.getExecutionTimeMs());
+        } catch (SQLException e) {
+            return "Export failed (SQL Error):\n" + getFullStackTrace(e);
+        } catch (IOException e) {
+            return "Export failed (IO Error): " + e.getMessage();
+        }
+    }
+
+    private String handleQuiet(String mode) {
+        if (mode.equalsIgnoreCase("on")) {
+            quietMode = true;
+            return "Quiet mode ON - query results will show summary only.";
+        } else if (mode.equalsIgnoreCase("off")) {
+            quietMode = false;
+            return "Quiet mode OFF - query results will be displayed.";
+        } else {
+            return "Usage: \\quiet on|off";
         }
     }
 
@@ -90,7 +131,13 @@ public final class CommandHandler {
     private String executeSql(String sql) {
         try {
             QueryResult result = dbManager.executeQuery(sql);
-            return TableFormatter.format(result);
+
+            if (quietMode && result.hasData() && result.getUpdateCount() < 0) {
+                // Quiet mode: SELECT-like queries show summary only
+                return String.format("(%d rows in %dms)", result.getRowCount(), result.getExecutionTimeMs());
+            }
+
+            return TableFormatter.format(result, TableFormatter.DEFAULT_PAGE_SIZE);
         } catch (SQLException e) {
             return "SQL Error:\n" + getFullStackTrace(e);
         }

@@ -8,6 +8,8 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 public class ExcelExporter implements Exporter {
@@ -44,18 +46,7 @@ public class ExcelExporter implements Exporter {
 
             for (List<Object> dataRow : rows) {
                 Row row = sheet.createRow(rowIndex++);
-                for (int i = 0; i < dataRow.size(); i++) {
-                    Cell cell = row.createCell(i);
-                    Object value = dataRow.get(i);
-                    if (value == null) {
-                        cell.setCellValue("");
-                    } else if (value instanceof Number) {
-                        cell.setCellValue(((Number) value).doubleValue());
-                    } else {
-                        cell.setCellValue(value.toString());
-                    }
-                    cell.setCellStyle(dataStyle);
-                }
+                writeRow(row, dataRow, dataStyle);
 
                 count++;
                 if (count % FLUSH_ROWS == 0 && total > FLUSH_ROWS * 10) {
@@ -70,6 +61,76 @@ public class ExcelExporter implements Exporter {
             try (FileOutputStream outputStream = new FileOutputStream(path.toFile())) {
                 workbook.write(outputStream);
             }
+        }
+    }
+
+    @Override
+    public long exportFromResultSet(ResultSet rs, List<String> columns, Path path) throws SQLException, IOException {
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(FLUSH_ROWS)) {
+            workbook.setCompressTempFiles(true);
+            SXSSFSheet sheet = workbook.createSheet("Query Result");
+
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setAlignment(HorizontalAlignment.LEFT);
+
+            // Write header
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < columns.size(); i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns.get(i));
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 4000);
+            }
+
+            // Stream data from ResultSet
+            long rowCount = 0;
+            int rowIndex = 1;
+            int columnCount = columns.size();
+
+            while (rs.next()) {
+                Row row = sheet.createRow(rowIndex++);
+                for (int i = 1; i <= columnCount; i++) {
+                    Cell cell = row.createCell(i - 1);
+                    Object value = rs.getObject(i);
+                    setCellValue(cell, value);
+                    cell.setCellStyle(dataStyle);
+                }
+                rowCount++;
+
+                if (rowCount % FLUSH_ROWS == 0) {
+                    System.err.printf("\rExporting: %d rows", rowCount);
+                }
+            }
+
+            if (rowCount >= FLUSH_ROWS) {
+                System.err.println();
+            }
+
+            try (FileOutputStream outputStream = new FileOutputStream(path.toFile())) {
+                workbook.write(outputStream);
+            }
+
+            return rowCount;
+        }
+    }
+
+    private void writeRow(Row row, List<Object> dataRow, CellStyle dataStyle) {
+        for (int i = 0; i < dataRow.size(); i++) {
+            Cell cell = row.createCell(i);
+            Object value = dataRow.get(i);
+            setCellValue(cell, value);
+            cell.setCellStyle(dataStyle);
+        }
+    }
+
+    private void setCellValue(Cell cell, Object value) {
+        if (value == null) {
+            cell.setCellValue("");
+        } else if (value instanceof Number) {
+            cell.setCellValue(((Number) value).doubleValue());
+        } else {
+            cell.setCellValue(value.toString());
         }
     }
 

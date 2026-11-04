@@ -1,6 +1,7 @@
 package com.example.dbclient.db;
 
 import com.example.dbclient.config.DatabaseProfile;
+import com.example.dbclient.export.Exporter;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -100,6 +101,44 @@ public class DatabaseManager implements AutoCloseable {
 
     public QueryResult getLastResult() {
         return lastResult;
+    }
+
+    /**
+     * 执行查询并直接流式导出到文件，不将全部数据驻留内存。
+     * 用于 \export-sql 命令的大数据导出场景。
+     *
+     * @param sql      查询语句
+     * @param exporter 导出器
+     * @param path     输出文件路径
+     * @return 流式查询结果（仅包含元信息，不含行数据）
+     */
+    public StreamingQueryResult executeAndExport(String sql, Exporter exporter, java.nio.file.Path path)
+            throws SQLException, java.io.IOException {
+        ensureConnected();
+        long startTime = System.currentTimeMillis();
+
+        try (Statement stmt = connection.createStatement(
+                ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+
+            try {
+                stmt.setFetchSize(1000);
+            } catch (SQLException e) {
+                stmt.setFetchSize(100);
+            }
+
+            try (ResultSet rs = stmt.executeQuery(sql)) {
+                List<String> columns = extractColumns(rs);
+                long rowCount = exporter.exportFromResultSet(rs, columns, path);
+                long elapsed = System.currentTimeMillis() - startTime;
+                return new StreamingQueryResult(columns, rowCount, elapsed);
+            }
+        }
+    }
+
+    private void ensureConnected() throws SQLException {
+        if (!isConnected()) {
+            throw new SQLException("Not connected to a database. Use \\connect first.");
+        }
     }
 
     public DatabaseProfile getCurrentProfile() {

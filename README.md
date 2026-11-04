@@ -80,11 +80,13 @@ java -jar target/db-client-1.0.0.jar --config /path/to/config.yaml --profile pgs
 
 | 命令 | 说明 |
 |------|------|
-| `SELECT ...` | 执行 SQL 查询 |
+| `SELECT ...` | 执行 SQL 查询（结果分页展示，默认最多 50 行） |
 | `INSERT ...` | 执行数据插入 |
 | `UPDATE ...` | 执行数据更新 |
 | `DELETE ...` | 执行数据删除 |
 | `\export <path>` | 导出上次查询结果到 CSV/XLSX |
+| `\export-sql <path> <sql>` | 执行 SQL 并直接流式导出到文件（不展示，低内存） |
+| `\quiet on\|off` | 开关静默模式（仅显示摘要，不展示数据） |
 | `\connect <profile>` | 切换数据库连接 |
 | `\help` | 显示帮助信息 |
 | `\exit` | 退出 REPL |
@@ -97,21 +99,38 @@ $ java -jar target/db-client-1.0.0.jar --profile mysql-dev
 Database Client REPL
 Type \help for available commands
 
-[MYSQL] myapp_dev> SELECT * FROM users LIMIT 5;
+[MYSQL] myapp_dev> SELECT * FROM users;
 +----+--------+------------------+
 | id | name   | email            |
 +----+--------+------------------+
 | 1  | Alice  | alice@example.com|
 | 2  | Bob    | bob@example.com  |
-| 3  | Charlie| charlie@ex.com   |
+| ... (showing first 50 rows) ...
 +----+--------+------------------+
-(3 rows in 15ms)
+(1000 rows total, showing first 50, 125ms)
 
 [MYSQL] myapp_dev> \export /tmp/users.csv
 Exported to /tmp/users.csv
 
-[MYSQL] myapp_dev> \export /tmp/users.xlsx
-Exported to /tmp/users.xlsx
+# 大数据导出：直接流式写文件，不经过终端展示
+[MYSQL] myapp_dev> \export-sql /tmp/big_data.csv SELECT * FROM orders WHERE year=2024
+Exported 100000 rows to /tmp/big_data.csv (2300ms)
+
+[MYSQL] myapp_dev> \export-sql /tmp/report.xlsx SELECT u.name, o.amount FROM users u JOIN orders o ON u.id=o.user_id
+Exported 50000 rows to /tmp/report.xlsx (1800ms)
+
+# 静默模式：查询仅显示摘要，适合批量导出
+[MYSQL] myapp_dev> \quiet on
+Quiet mode ON - query results will show summary only.
+
+[MYSQL] myapp_dev> SELECT * FROM big_table;
+(100000 rows in 2300ms)
+
+[MYSQL] myapp_dev> \export /tmp/big_data.csv
+Exported to /tmp/big_data.csv
+
+[MYSQL] myapp_dev> \quiet off
+Quiet mode OFF - query results will be displayed.
 
 [MYSQL] myapp_dev> \connect pgsql-dev
 Connected to pgsql-dev
@@ -171,14 +190,15 @@ db-client/
     ├── db/
     │   ├── DatabaseType.java        # 数据库类型枚举
     │   ├── DatabaseManager.java     # 数据库连接管理
-    │   └── QueryResult.java         # 查询结果封装
+    │   ├── QueryResult.java         # 查询结果封装
+    │   └── StreamingQueryResult.java # 流式查询结果（仅元信息）
     ├── export/
-    │   ├── Exporter.java            # 导出接口
+    │   ├── Exporter.java            # 导出接口（含流式方法）
     │   ├── CsvExporter.java         # CSV 导出
     │   ├── ExcelExporter.java       # Excel 导出
     │   └── ExporterFactory.java     # 导出工厂
     └── formatter/
-        └── TableFormatter.java      # 表格格式化
+        └── TableFormatter.java      # 表格格式化（支持分页）
 ```
 
 ## 技术栈
@@ -196,15 +216,18 @@ db-client/
 
 1. **密码安全** - 配置文件中的密码为明文，建议设置文件权限为 600
 2. **连接池** - 当前版本每次连接创建新连接，不支持连接池
-3. **大数据导出** - 导出功能使用流式处理，内存占用低，支持较大数据集
-4. **事务** - 当前版本自动提交，不支持事务管理
+3. **大数据导出** - 推荐使用 `\export-sql` 命令，流式处理，内存占用极低；`\export` 命令仍使用内存缓存
+4. **分页展示** - 查询结果默认最多展示 50 行，完整数据可通过 `\export` 导出
+5. **事务** - 当前版本自动提交，不支持事务管理
 
 ## 后续规划
 
+- [x] 查询结果分页展示
+- [x] 大数据流式导出（\export-sql）
+- [x] 静默模式（\quiet）
 - [ ] 命令历史持久化
 - [ ] SQL 自动补全
 - [ ] SSL/TLS 连接支持
-- [ ] 查询结果分页展示
 - [ ] 连接池支持
 
 ## 许可证

@@ -6,7 +6,13 @@ import java.util.List;
 
 public class TableFormatter {
 
+    public static final int DEFAULT_PAGE_SIZE = 50;
+
     public static String format(QueryResult result) {
+        return format(result, Integer.MAX_VALUE);
+    }
+
+    public static String format(QueryResult result, int maxRows) {
         if (result == null) {
             return "No result";
         }
@@ -21,30 +27,43 @@ public class TableFormatter {
             return String.format("(0 rows in %dms)", result.getExecutionTimeMs());
         }
 
-        int[] widths = calculateColumnWidths(columns, rows);
+        int totalRows = rows.size();
+        boolean truncated = totalRows > maxRows;
+        int displayRows = truncated ? maxRows : totalRows;
+
+        // Only calculate widths from the rows we actually display
+        int[] widths = calculateColumnWidths(columns, rows, displayRows);
         StringBuilder sb = new StringBuilder();
 
         sb.append(formatRow(columns, widths)).append("\n");
         sb.append(formatSeparator(widths, '+', '-')).append("\n");
 
-        for (List<Object> row : rows) {
-            sb.append(formatRow(row, widths)).append("\n");
+        for (int i = 0; i < displayRows; i++) {
+            sb.append(formatRow(rows.get(i), widths)).append("\n");
         }
 
         sb.append(formatSeparator(widths, '+', '-'));
-        sb.append(String.format("\n(%d rows in %dms)", result.getRowCount(), result.getExecutionTimeMs()));
+
+        if (truncated) {
+            sb.append(String.format("\n(%d rows total, showing first %d, %dms)",
+                    totalRows, maxRows, result.getExecutionTimeMs()));
+        } else {
+            sb.append(String.format("\n(%d rows in %dms)", totalRows, result.getExecutionTimeMs()));
+        }
 
         return sb.toString();
     }
 
-    private static int[] calculateColumnWidths(List<String> columns, List<List<Object>> rows) {
+    private static int[] calculateColumnWidths(List<String> columns, List<List<Object>> rows, int maxRows) {
         int[] widths = new int[columns.size()];
 
         for (int i = 0; i < columns.size(); i++) {
             widths[i] = columns.get(i).length();
         }
 
-        for (List<Object> row : rows) {
+        int limit = Math.min(rows.size(), maxRows);
+        for (int r = 0; r < limit; r++) {
+            List<Object> row = rows.get(r);
             for (int i = 0; i < row.size() && i < widths.length; i++) {
                 int len = row.get(i) != null ? row.get(i).toString().length() : 4; // "NULL"
                 widths[i] = Math.max(widths[i], len);

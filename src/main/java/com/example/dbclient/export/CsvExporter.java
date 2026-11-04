@@ -4,12 +4,15 @@ import com.example.dbclient.db.QueryResult;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CsvExporter implements Exporter {
@@ -18,7 +21,7 @@ public class CsvExporter implements Exporter {
 
     @Override
     public void export(QueryResult result, Path path) throws IOException {
-        try (Writer writer = new OutputStreamWriter(Files.newOutputStream(path), "UTF-8");
+        try (Writer writer = new OutputStreamWriter(Files.newOutputStream(path), StandardCharsets.UTF_8);
              CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT)) {
 
             // Write header
@@ -46,6 +49,39 @@ public class CsvExporter implements Exporter {
             if (total > BATCH_SIZE * 10) {
                 System.err.println();
             }
+        }
+    }
+
+    @Override
+    public long exportFromResultSet(ResultSet rs, List<String> columns, Path path) throws SQLException, IOException {
+        try (Writer writer = new OutputStreamWriter(Files.newOutputStream(path), StandardCharsets.UTF_8);
+             CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT)) {
+
+            // Write header
+            printer.printRecord(columns);
+
+            long rowCount = 0;
+            int columnCount = columns.size();
+
+            while (rs.next()) {
+                List<Object> row = new ArrayList<>(columnCount);
+                for (int i = 1; i <= columnCount; i++) {
+                    row.add(rs.getObject(i));
+                }
+                printer.printRecord(row);
+                rowCount++;
+
+                if (rowCount % BATCH_SIZE == 0) {
+                    printer.flush();
+                    System.err.printf("\rExporting: %d rows", rowCount);
+                }
+            }
+
+            if (rowCount >= BATCH_SIZE) {
+                System.err.println();
+            }
+
+            return rowCount;
         }
     }
 }
