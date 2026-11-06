@@ -20,6 +20,10 @@ public class TableFormatter {
         List<String> columns = result.getColumns();
         List<List<Object>> rows = result.getRows();
 
+        if (result.isDdl()) {
+            return String.format("OK: statement executed in %dms", result.getExecutionTimeMs());
+        }
+
         if (columns.isEmpty()) {
             if (result.getUpdateCount() >= 0) {
                 return String.format("(%d rows affected in %dms)", result.getUpdateCount(), result.getExecutionTimeMs());

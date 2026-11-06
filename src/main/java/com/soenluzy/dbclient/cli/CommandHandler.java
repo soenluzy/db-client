@@ -129,8 +129,15 @@ public final class CommandHandler {
     }
 
     private String executeSql(String sql) {
+        QueryResult previous = dbManager.getLastResult();
+        boolean keepPrevious = previous != null && previous.getUpdateCount() < 0;
         try {
             QueryResult result = dbManager.executeQuery(sql);
+
+            // DDL 不覆盖上一个查询结果，保证随后的 \export 仍能导出之前的数据
+            if (result.isDdl() && keepPrevious) {
+                dbManager.restoreLastResult(previous);
+            }
 
             if (quietMode && result.hasData() && result.getUpdateCount() < 0) {
                 // Quiet mode: SELECT-like queries show summary only

@@ -8,15 +8,21 @@ public class QueryResult {
     private final List<List<Object>> rows;
     private final long executionTimeMs;
     private final int updateCount;
+    private final boolean ddl;
 
     public QueryResult(List<String> columns, List<List<Object>> rows, long executionTimeMs) {
         this.columns = columns;
         this.rows = rows;
         this.executionTimeMs = executionTimeMs;
         this.updateCount = -1;
+        this.ddl = false;
     }
 
     public QueryResult(int updateCount, long executionTimeMs) {
+        this(updateCount, executionTimeMs, false);
+    }
+
+    public QueryResult(int updateCount, long executionTimeMs, boolean ddl) {
         this.columns = new ArrayList<>();
         this.columns.add("affected_rows");
         this.rows = new ArrayList<>();
@@ -25,6 +31,7 @@ public class QueryResult {
         this.rows.add(row);
         this.executionTimeMs = executionTimeMs;
         this.updateCount = updateCount;
+        this.ddl = ddl;
     }
 
     public List<String> getColumns() {
@@ -41,6 +48,13 @@ public class QueryResult {
 
     public int getUpdateCount() {
         return updateCount;
+    }
+
+    /**
+     * 是否为 DDL 语句的执行结果（updateCount 无实际意义）。
+     */
+    public boolean isDdl() {
+        return ddl;
     }
 
     public int getRowCount() {

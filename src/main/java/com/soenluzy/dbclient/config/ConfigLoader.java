@@ -67,6 +67,10 @@ public class ConfigLoader {
             profile.setDatabase((String) profileData.get("database"));
             profile.setUsername((String) profileData.get("username"));
             profile.setPassword((String) profileData.get("password"));
+            Object schema = profileData.get("schema");
+            if (schema != null) {
+                profile.setSchema(String.valueOf(schema));
+            }
 
             profiles.put(name, profile);
         }

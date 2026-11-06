@@ -6,6 +6,8 @@
 
 - **双数据库支持** - MySQL 和 PostgreSQL
 - **交互式 REPL** - 类似 psql 的命令行交互体验
+- **表结构变更** - 直接执行 `CREATE` / `ALTER` / `DROP` 等 DDL 语句，每次执行自动提交
+- **Schema 隔离** - PostgreSQL 连接可指定 schema，无需在每条 SQL 里手写前缀
 - **表格输出** - 查询结果以格式化的 ASCII 表格展示
 - **数据导出** - 支持 CSV 和 Excel (XLSX) 格式导出
 - **多环境配置** - 通过配置文件管理多个数据库连接
@@ -49,6 +51,7 @@ profiles:
     host: localhost
     port: 5432
     database: myapp_dev
+    schema: app_dev
     username: dev_user
     password: your_password
 
@@ -84,6 +87,7 @@ java -jar target/db-client-1.0.0.jar --config /path/to/config.yaml --profile pgs
 | `INSERT ...` | 执行数据插入 |
 | `UPDATE ...` | 执行数据更新 |
 | `DELETE ...` | 执行数据删除 |
+| `CREATE / ALTER / DROP / TRUNCATE ...` | 执行 DDL，成功后返回 `OK: statement executed in Nms` |
 | `\export <path>` | 导出上次查询结果到 CSV/XLSX |
 | `\export-sql <path> <sql>` | 执行 SQL 并直接流式导出到文件（不展示，低内存） |
 | `\quiet on\|off` | 开关静默模式（仅显示摘要，不展示数据） |
@@ -143,6 +147,17 @@ Connected to pgsql-dev
 +-------+
 (1 rows in 8ms)
 
+# DDL：每次执行自动提交，立即生效
+[POSTGRESQL] myapp_dev> CREATE TABLE audit_log(id bigserial primary key, note text);
+OK: statement executed in 6ms
+
+# DDL 不会冲掉上一条查询结果，\export 依然可导出
+[POSTGRESQL] myapp_dev> ALTER TABLE audit_log ADD COLUMN created_at timestamptz DEFAULT now();
+OK: statement executed in 4ms
+
+[POSTGRESQL] myapp_dev> \export /tmp/count.csv
+Exported to /tmp/count.csv
+
 [POSTGRESQL] myapp_dev> \exit
 Goodbye!
 ```
@@ -173,6 +188,27 @@ Goodbye!
 | `database` | 是 | 数据库名称 |
 | `username` | 是 | 用户名 |
 | `password` | 是 | 密码 |
+| `schema` | 否 | 目标 schema（仅 PostgreSQL）。多值用逗号分隔、按优先级排列 |
+
+### 关于 `schema`
+
+指定后会被拼进 JDBC URL 的 `currentSchema` 参数，等价于把该 schema 放到 `search_path` 最前面：
+
+```yaml
+  pgsql-wh-km:
+    type: postgresql
+    host: 10.0.0.10
+    port: 18821
+    database: easkhub
+    schema: km          # SQL 中的无前缀表名默认命中 km
+    username: km_user
+    password: ******
+```
+
+- 生成 `jdbc:postgresql://10.0.0.10:18821/easkhub?currentSchema=km`
+- 未指定 `schema` 时行为不变，沿用服务端默认 `search_path`
+- 需要临时切换会话内的 schema，仍可执行 `SET search_path TO other, public`
+- 注意用会话级 `SET`，**不要用 `SET LOCAL`**——连接处于自动提交模式，`SET LOCAL` 会随语句结束立刻失效
 
 ## 项目结构
 
@@ -218,13 +254,17 @@ db-client/
 2. **连接池** - 当前版本每次连接创建新连接，不支持连接池
 3. **大数据导出** - 推荐使用 `\export-sql` 命令，流式处理，内存占用极低；`\export` 命令仍使用内存缓存
 4. **分页展示** - 查询结果默认最多展示 50 行，完整数据可通过 `\export` 导出
-5. **事务** - 当前版本自动提交，不支持事务管理
+5. **事务** - 连接固定为自动提交模式（`autoCommit=true`），DDL 与 DML 每条语句立即生效，**不支持 `BEGIN` 到 `COMMIT` 的多语句事务**；需要回滚时请手动 `BEGIN` / `ROLLBACK` 并自行承担后果
+6. **DDL 影响** - `DROP`、`TRUNCATE` 没有二次确认，执行前请确认已连到正确的库和 schema
+7. **导出范围** - `\export-sql` 只导出带结果集的语句；对 DDL 会执行并提示"无结果集，未导出"
 
 ## 后续规划
 
 - [x] 查询结果分页展示
 - [x] 大数据流式导出（\export-sql）
 - [x] 静默模式（\quiet）
+- [x] DDL 支持（自动提交、独立提示、不覆盖导出目标）
+- [x] PostgreSQL schema 指定
 - [ ] 命令历史持久化
 - [ ] SQL 自动补全
 - [ ] SSL/TLS 连接支持
